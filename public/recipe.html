@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Delicious Recipe Dashboard</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: url('https://images.unsplash.com/photo-1589927986089-35812388d1d4?auto=format&fit=crop&w=1470&q=80') no-repeat center center fixed;
+      background-size: cover;
+      margin: 0;
+      padding: 0;
+      color: #333;
+    }
+    .container {
+      display: flex;
+      max-width: 1200px;
+      margin: 40px auto;
+      background: rgba(255, 255, 255, 0.9);
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 0 20px rgba(0,0,0,0.2);
+    }
+    .sidebar {
+      width: 250px;
+      background-color: #ffecd2;
+      padding: 20px;
+      border-right: 2px solid #ffe0b2;
+    }
+    .sidebar h3 {
+      color: #ff6600;
+      margin-bottom: 15px;
+    }
+    .sidebar ul {
+      list-style: none;
+      padding-left: 0;
+    }
+    .sidebar ul li {
+      padding: 10px;
+      margin: 5px 0;
+      background-color: #fff4e1;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+    .sidebar ul li:hover {
+      background-color: #ffe0b2;
+    }
+
+    .main {
+      flex: 1;
+      padding: 30px;
+    }
+
+    .main h1 {
+      color: #ff6600;
+      text-align: center;
+      margin-bottom: 30px;
+    }
+
+    .add-recipe {
+      background-color: #fff3e0;
+      padding: 20px;
+      border-radius: 10px;
+      margin-bottom: 30px;
+    }
+
+    .add-recipe input, .add-recipe textarea, .add-recipe select {
+      width: 100%;
+      margin-bottom: 15px;
+      padding: 12px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      font-size: 14px;
+    }
+
+    .add-recipe button {
+      padding: 12px 24px;
+      background-color: #ff6600;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+
+    .add-recipe button:hover {
+      background-color: #e65c00;
+    }
+
+    .category-dropdown {
+      margin-bottom: 15px;
+    }
+
+    .recipe-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 20px;
+    }
+
+    .recipe-card {
+      background-color: #fff;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+
+    .recipe-card h3 {
+      margin-top: 0;
+      color: #d84315;
+    }
+
+    .dark-mode {
+      background: #121212 !important;
+      color: white !important;
+    }
+
+    .dark-mode .container {
+      background: #1e1e1e !important;
+      color: white !important;
+    }
+
+    .dark-mode .sidebar {
+      background-color: #2c2c2c !important;
+      border-color: #444 !important;
+    }
+
+    .dark-mode .sidebar ul li {
+      background-color: #333 !important;
+      color: white;
+    }
+
+    .dark-mode .sidebar ul li:hover {
+      background-color: #444 !important;
+    }
+
+    .dark-mode .add-recipe {
+      background-color: #2c2c2c !important;
+    }
+
+    .toggle-btn {
+      position: fixed;
+      top: 15px;
+      right: 20px;
+      z-index: 999;
+      background: #ff6600;
+      color: white;
+      border: none;
+      padding: 10px 14px;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body id="main-body">
+  <button class="toggle-btn" onclick="toggleDarkMode()">🌙 Toggle Dark Mode</button>
+  <div class="container" id="container">
+    <div class="sidebar">
+      <h3>Most Liked Recipes</h3>
+      <ul id="liked-recipes"></ul>
+    </div>
+    <div class="main">
+      <h1>Welcome to Your Recipe Dashboard</h1>
+
+      <div class="add-recipe">
+        <h3>Add a New Recipe</h3>
+        <input type="text" id="title" placeholder="Recipe Title" />
+        <input type="text" id="ingredients" placeholder="Ingredients (comma-separated)" />
+        <textarea id="description" placeholder="Description"></textarea>
+        <div class="category-dropdown">
+          <select id="category">
+            <option value="">Select Category</option>
+            <option value="Fast Food">Fast Food</option>
+            <option value="Healthy">Healthy</option>
+            <option value="Dessert">Dessert</option>
+            <option value="North Indian">North Indian</option>
+            <option value="South Indian">South Indian</option>
+            <option value="Beverages">Beverages</option>
+          </select>
+        </div>
+        <button onclick="addRecipe()">Add Recipe</button>
+      </div>
+
+      <div class="recipe-grid" id="recipe-list"></div>
+    </div>
+  </div>
+
+  <script>
+    async function fetchRecipes() {
+      try {
+        const response = await fetch('/recipes');
+        const recipes = await response.json();
+
+        const recipeList = document.getElementById('recipe-list');
+        const likedRecipes = document.getElementById('liked-recipes');
+        recipeList.innerHTML = '';
+        likedRecipes.innerHTML = '';
+
+        recipes.forEach(recipe => {
+          const card = document.createElement('div');
+          card.className = 'recipe-card';
+          card.innerHTML = `
+            <h3>${recipe.title}</h3>
+            <p><strong>Ingredients:</strong> ${recipe.ingredients}</p>
+            <p><strong>Description:</strong> ${recipe.description}</p>
+            <p><strong>Category:</strong> ${recipe.category || 'General'}</p>
+          `;
+          recipeList.appendChild(card);
+
+          if (recipe.likes >= 10) {
+            const li = document.createElement('li');
+            li.textContent = recipe.title;
+            li.onclick = () => alert(`${recipe.title}\n\n${recipe.description}`);
+            likedRecipes.appendChild(li);
+          }
+        });
+
+      } catch (err) {
+        console.error('Failed to fetch recipes:', err);
+      }
+    }
+
+    async function addRecipe() {
+      const title = document.getElementById('title').value;
+      const ingredients = document.getElementById('ingredients').value;
+      const description = document.getElementById('description').value;
+      const category = document.getElementById('category').value;
+
+      if (!title || !ingredients || !description) {
+        return alert('Please fill all fields');
+      }
+
+      const response = await fetch('/recipes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title, ingredients, description, category })
+      });
+
+      const data = await response.json();
+      alert(data.message);
+      fetchRecipes(); // Refresh the list
+    }
+
+    function toggleDarkMode() {
+      const body = document.getElementById('main-body');
+      const container = document.getElementById('container');
+      const btn = document.querySelector('.toggle-btn');
+
+      const dark = body.classList.toggle('dark-mode');
+      btn.textContent = dark ? '☀️ Toggle Light Mode' : '🌙 Toggle Dark Mode';
+    }
+
+    document.addEventListener('DOMContentLoaded', fetchRecipes);
+  </script>
+</body>
+</html>
+
+
